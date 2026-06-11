@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PBI Migration — Object Comparison Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f1a;--surface:#111827;--surface2:#1a2235;--surface3:#1f2d44;
+  --border:#1e3050;--border2:#2a4166;
+  --accent:#00d4ff;--green:#00e5a0;--green-glow:rgba(0,229,160,0.12);
+  --red:#ff4466;--yellow:#ffd166;--purple:#a78bfa;--orange:#ff6b2b;
+  --text:#e8f0fe;--text2:#8da8c8;--text3:#4a6480;
+  --font-head:'Syne',sans-serif;--font-mono:'DM Mono',monospace;
+  --font-body:'DM Sans',sans-serif;--radius:10px;--radius-lg:16px;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:14px;line-height:1.6;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.2;pointer-events:none;z-index:0;}
+.shell{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:0 24px 80px;}
+header{display:flex;align-items:center;justify-content:space-between;padding:28px 0 24px;border-bottom:1px solid var(--border);margin-bottom:32px;}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-icon{width:38px;height:38px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#0099cc);display:flex;align-items:center;justify-content:center;font-size:17px;}
+.logo h1{font-family:var(--font-head);font-size:17px;font-weight:800;}
+.logo span{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;}
+.badge{font-family:var(--font-mono);font-size:11px;background:var(--surface2);border:1px solid var(--border2);color:var(--accent);padding:4px 11px;border-radius:20px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;margin-bottom:18px;}
+.section-title{font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--accent);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.section-title::before{content:'';display:block;width:3px;height:13px;background:currentColor;border-radius:2px;}
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:640px){.upload-grid{grid-template-columns:1fr;}}
+.upload-box{border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:26px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--surface2);}
+.upload-box:hover,.upload-box.drag{border-color:var(--accent);background:rgba(0,212,255,.06);}
+.upload-box input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.ub-icon{font-size:26px;margin-bottom:6px;}
+.ub-label{font-size:13px;font-weight:600;color:var(--accent);}
+.ub-sub{font-size:11px;color:var(--text2);margin-top:3px;}
+.ub-file{display:none;margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--green);background:var(--surface3);border:1px solid var(--border2);border-radius:5px;padding:3px 10px;}
+.stats-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px;}
+@media(max-width:900px){.stats-row{grid-template-columns:repeat(3,1fr);}}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;text-align:center;}
+.stat .big{font-family:var(--font-head);font-size:24px;font-weight:800;line-height:1;}
+.stat .lbl{font-size:10px;color:var(--text2);margin-top:3px;text-transform:uppercase;letter-spacing:.4px;}
+.s-total .big{color:var(--accent);}
+.s-match .big{color:var(--green);}
+.s-aas   .big{color:var(--orange);}
+.s-fab   .big{color:var(--purple);}
+.s-miss  .big{color:var(--red);}
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+.fbtn{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;cursor:pointer;transition:all .15s;font-family:var(--font-body);}
+.fbtn:hover{border-color:var(--accent);color:var(--accent);}
+.fbtn.active{background:var(--surface3);border-color:var(--accent);color:var(--accent);}
+.fbtn .dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+select.fsel{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);border-radius:var(--radius);padding:5px 10px;font-family:var(--font-body);font-size:12px;cursor:pointer;}
+.search-box{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:5px 12px;font-family:var(--font-mono);font-size:12px;color:var(--text);width:220px;outline:none;}
+.search-box:focus{border-color:var(--accent);}
+.table-wrap{overflow-x:auto;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:11px;}
+thead tr{background:var(--surface3);}
+th{padding:9px 12px;text-align:left;font-family:var(--font-mono);font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border2);white-space:nowrap;}
+td{padding:8px 12px;border-bottom:1px solid var(--border);font-family:var(--font-mono);vertical-align:top;}
+tr:hover td{background:var(--surface2);}
+tr:last-child td{border-bottom:none;}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;}
+.b-match{background:rgba(0,229,160,.12);color:var(--green);}
+.b-diff {background:rgba(255,209,102,.12);color:var(--yellow);}
+.b-aas  {background:rgba(255,107,43,.12);color:var(--orange);}
+.b-fab  {background:rgba(167,139,250,.12);color:var(--purple);}
+.b-miss {background:rgba(255,68,102,.12);color:var(--red);}
+.b-type {background:rgba(141,168,200,.1);color:var(--text2);}
+.dax-cell{max-width:260px;max-height:60px;overflow:hidden;white-space:pre-wrap;word-break:break-all;font-size:10px;line-height:1.5;color:var(--text2);cursor:pointer;position:relative;}
+.dax-cell:hover{max-height:none;color:var(--text);}
+.dax-cell.match{color:var(--green);}
+.dax-cell.diff{color:var(--yellow);}
+.dax-cell.missing{color:var(--text3);font-style:italic;}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--radius);font-family:var(--font-body);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .2s;}
+.btn-primary{background:var(--accent);color:var(--bg);}
+.btn-primary:hover{background:#1ae0ff;}
+.btn-green{background:var(--green);color:var(--bg);}
+.btn-green:hover{background:#33ebb5;}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.dl-card{border:1px solid var(--green);background:var(--green-glow);border-radius:var(--radius-lg);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px;}
+.dl-card h3{font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--green);}
+.dl-card p{font-size:11px;color:var(--text2);margin-top:2px;}
+.info-box{background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:var(--radius);padding:11px 15px;font-size:12px;color:var(--text2);margin-bottom:14px;display:flex;gap:10px;}
+.empty{text-align:center;padding:40px;color:var(--text3);}
+.cat-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.cat-pill{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:5px 13px;font-size:12px;cursor:pointer;transition:all .15s;}
+.cat-pill:hover{border-color:var(--accent);}
+.cat-pill.active{border-color:var(--accent);color:var(--accent);}
+.cat-pill .dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:var(--surface);}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeUp .3s ease;}
+
+/* ── Credential Panel ── */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border2);margin-bottom:22px;}
+.tab-btn{padding:9px 20px;font-family:var(--font-body);font-size:12px;font-weight:500;color:var(--text2);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all .15s;margin-bottom:-1px;}
+.tab-btn:hover{color:var(--accent);}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-pane{display:none;}.tab-pane.active{display:block;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:640px){.form-grid{grid-template-columns:1fr;}}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;font-family:var(--font-mono);}
+.field input{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 12px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none;transition:border-color .15s;}
+.field input:focus{border-color:var(--accent);}
+.field input::placeholder{color:var(--text3);}
+.field-full{grid-column:1/-1;}
+.field .hint{font-size:10px;color:var(--text3);margin-top:2px;}
+.pw-wrap{position:relative;}
+.pw-wrap input{width:100%;padding-right:36px;}
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text2);cursor:pointer;font-size:13px;padding:0;}
+.pw-toggle:hover{color:var(--accent);}
+.cred-status{display:flex;align-items:center;gap:8px;font-size:12px;padding:8px 14px;border-radius:var(--radius);margin-top:14px;}
+.cred-ok{background:var(--green-glow);border:1px solid rgba(0,229,160,.25);color:var(--green);}
+.cred-warn{background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.25);color:var(--yellow);}
+
+/* ── Step flow ── */
+.step-flow{display:flex;align-items:center;gap:0;margin-bottom:28px;flex-wrap:wrap;}
+.step{display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:var(--radius);background:var(--surface2);border:1px solid var(--border2);font-size:12px;color:var(--text2);}
+.step.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.06);}
+.step.done{border-color:var(--green);color:var(--green);background:var(--green-glow);}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;font-weight:500;flex-shrink:0;}
+.step.active .step-num{background:var(--accent);color:var(--bg);}
+.step.done .step-num{background:var(--green);color:var(--bg);}
+.step-arrow{color:var(--border2);font-size:16px;padding:0 6px;flex-shrink:0;}
+
+/* ── Script generate card ── */
+.gen-card{border:1px solid var(--border2);border-radius:var(--radius-lg);padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:var(--surface2);margin-bottom:10px;}
+.gen-card h3{font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--text);}
+.gen-card p{font-size:11px;color:var(--text2);margin-top:2px;}
+.gen-card.ready{border-color:var(--accent);background:rgba(0,212,255,.04);}
+.gen-card.ready h3{color:var(--accent);}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text2);}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent);}
+.run-instructions{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px 16px;font-family:var(--font-mono);font-size:11px;color:var(--text2);line-height:1.8;margin-top:12px;display:none;}
+.run-instructions code{color:var(--accent);}
+.run-instructions .cmd{background:var(--surface3);border-radius:4px;padding:3px 8px;display:inline-block;color:var(--green);font-size:11px;}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <h1>PBI Migration — Object Comparison</h1>
+      <span>AAS Tabular Cube vs Microsoft Fabric · Full Metadata Comparison</span>
+    </div>
+  </div>
+  <div class="badge">v3.0</div>
+</header>
+
+<!-- Step flow -->
+<div class="step-flow">
+  <div class="step active" id="step1"><div class="step-num">1</div><span>Configure Credentials</span></div>
+  <div class="step-arrow">›</div>
+  <div class="step" id="step2"><div class="step-num">2</div><span>Download Scripts</span></div>
+  <div class="step-arrow">›</div>
+  <div class="step" id="step3"><div class="step-num">3</div><span>Run Locally</span></div>
+  <div class="step-arrow">›</div>
+  <div class="step" id="step4"><div class="step-num">4</div><span>Upload CSVs &amp; Compare</span></div>
+</div>
+
+<!-- ── STEP 1: Credential Configuration ── -->
+<div class="section-title">Step 1 — Configure Connection Credentials</div>
+<div class="card">
+  <div class="info-box" style="margin-bottom:18px;">
+    <span>🔒</span>
+    <span>Credentials are used <strong>only in your browser</strong> to generate pre-filled Python scripts. Nothing is sent to any server.</span>
+  </div>
+
+  <!-- Shared credentials -->
+  <div style="margin-bottom:16px;">
+    <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Shared Login</div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Email / User ID</label>
+        <input type="email" id="cred-user" placeholder="your-email@domain.com" oninput="onCredChange()"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="cred-password" placeholder="••••••••••" oninput="onCredChange()"/>
+          <button class="pw-toggle" onclick="togglePw('cred-password',this)" title="Show/hide">👁</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs: AAS | Fabric -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('aas-tab',this)">🗄 AAS (Azure Analysis Services)</button>
+    <button class="tab-btn" onclick="switchTab('fab-tab',this)">🔷 Microsoft Fabric</button>
+  </div>
+
+  <!-- AAS tab -->
+  <div class="tab-pane active" id="aas-tab">
+    <div class="form-grid">
+      <div class="field">
+        <label>Region</label>
+        <input type="text" id="aas-region" placeholder="eastus" oninput="onCredChange()"/>
+        <span class="hint">Short region slug only — e.g. <strong style="color:var(--accent)">eastus</strong>, westeurope, southeastasia</span>
+      </div>
+      <div class="field">
+        <label>Server Name</label>
+        <input type="text" id="aas-server" placeholder="myservername" oninput="onCredChange()"/>
+        <span class="hint">Short name only — e.g. <strong style="color:var(--accent)">myservername</strong> (not the full URL)</span>
+      </div>
+      <div class="field field-full">
+        <label>Database / Model Name</label>
+        <input type="text" id="aas-database" placeholder="SalesInvoice_Model" oninput="onCredChange()"/>
+      </div>
+      <div class="field field-full" id="aas-server-preview-wrap" style="display:none;">
+        <label>Assembled Server URL <span style="color:var(--green);font-size:9px;text-transform:none;letter-spacing:0;">— this is what goes into the script</span></label>
+        <div id="aas-server-preview" style="background:var(--surface3);border:1px solid var(--border2);border-radius:var(--radius);padding:7px 12px;font-family:var(--font-mono);font-size:11px;color:var(--green);word-break:break-all;"></div>
+      </div>
+    </div>
+    <div id="aas-cred-status" class="cred-status cred-warn" style="display:none;"></div>
+  </div>
+
+  <!-- Fabric tab -->
+  <div class="tab-pane" id="fab-tab">
+    <div class="form-grid">
+      <div class="field">
+        <label>Workspace Name</label>
+        <input type="text" id="fab-workspace" placeholder="My Fabric Workspace" oninput="onCredChange()"/>
+        <span class="hint">Exact name as shown in Fabric portal</span>
+      </div>
+      <div class="field">
+        <label>Semantic Model / Dataset Name</label>
+        <input type="text" id="fab-dataset" placeholder="SalesInvoice_Model" oninput="onCredChange()"/>
+      </div>
+    </div>
+    <div id="fab-cred-status" class="cred-status cred-warn" style="display:none;"></div>
+  </div>
+
+  <div id="cred-ok-banner" class="cred-status cred-ok" style="display:none;">
+    ✅ &nbsp;All fields filled — ready to generate scripts
+  </div>
+</div>
+
+<!-- ── STEP 2: Generate & Download Scripts ── -->
+<div class="section-title">Step 2 — Generate &amp; Download Pre-filled Scripts</div>
+<div class="card">
+  <div class="gen-card" id="gen-aas-card">
+    <div>
+      <h3>📄 extract_aas.py</h3>
+      <p>Extracts tables, columns &amp; measures from Azure Analysis Services via MSOLAP DMVs</p>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-outline" id="preview-aas-btn" onclick="previewScript('aas')" disabled>👁 Preview</button>
+      <button class="btn btn-primary" id="dl-aas-btn" onclick="downloadScript('aas')" disabled>⬇ Download</button>
+    </div>
+  </div>
+  <div class="gen-card" id="gen-fab-card">
+    <div>
+      <h3>📄 extract_fabric.py</h3>
+      <p>Extracts tables, columns &amp; measures from Microsoft Fabric Semantic Model via MSOLAP DMVs</p>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-outline" id="preview-fab-btn" onclick="previewScript('fab')" disabled>👁 Preview</button>
+      <button class="btn btn-primary" id="dl-fab-btn" onclick="downloadScript('fab')" disabled>⬇ Download</button>
+    </div>
+  </div>
+
+  <!-- Script preview -->
+  <div id="script-preview-wrap" style="display:none;margin-top:14px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--accent);" id="preview-title"></div>
+      <button class="btn btn-outline" style="padding:4px 10px;font-size:11px;" onclick="closePreview()">✕ Close</button>
+    </div>
+    <pre id="script-preview-content" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:16px;font-family:var(--font-mono);font-size:10px;line-height:1.7;color:var(--text2);overflow-x:auto;max-height:360px;overflow-y:auto;white-space:pre;"></pre>
+  </div>
+
+  <!-- Run instructions -->
+  <div class="run-instructions" id="run-instructions">
+    <div style="color:var(--accent);font-weight:500;margin-bottom:8px;">▶ How to run the scripts on your machine:</div>
+    <div>1. Install dependencies (once): &nbsp;<span class="cmd">pip install pywin32 pandas</span></div>
+    <div style="margin-top:6px;">2. Run AAS extraction: &nbsp;<span class="cmd">python extract_aas.py</span></div>
+    <div style="margin-top:4px;">3. Run Fabric extraction: &nbsp;<span class="cmd">python extract_fabric.py</span></div>
+    <div style="margin-top:6px;">4. Each script outputs a <code>.csv</code> file in the same folder — upload them below to compare.</div>
+    <div style="margin-top:8px;color:var(--text3);">⚠ Requires Windows with MSOLAP provider installed (comes with Power BI Desktop or SSMS).</div>
+  </div>
+</div>
+
+<!-- Upload -->
+<div class="section-title">Step 3 — Upload Extraction Files &amp; Compare</div>
+<div class="card">
+  <div class="info-box">
+    <span>ℹ</span>
+    <span>After running the scripts locally, upload the generated CSVs here. Compares names, data types, and DAX formulas side by side.</span>
+  </div>
+  <div class="upload-grid">
+    <div class="upload-box" id="aas-box">
+      <input type="file" accept=".csv" onchange="handleFile(event,'aas')"/>
+      <div class="ub-icon">🗄</div>
+      <div class="ub-label">AAS Objects CSV</div>
+      <div class="ub-sub">Output of extract_aas.py</div>
+      <div class="ub-file" id="aas-file-name"></div>
+    </div>
+    <div class="upload-box" id="fab-box">
+      <input type="file" accept=".csv" onchange="handleFile(event,'fab')"/>
+      <div class="ub-icon">🔷</div>
+      <div class="ub-label">Fabric Objects CSV</div>
+      <div class="ub-sub">Output of extract_fabric.py</div>
+      <div class="ub-file" id="fab-file-name"></div>
+    </div>
+  </div>
+  <div style="margin-top:16px;">
+    <button class="btn btn-primary" id="compare-btn" onclick="runComparison()" disabled>▶ Compare Now</button>
+  </div>
+</div>
+
+<!-- Results -->
+<div id="results-section" style="display:none;" class="fade-in">
+
+  <!-- Stats -->
+  <div class="section-title">Summary</div>
+  <div class="stats-row">
+    <div class="stat s-total"><div class="big" id="st-total">0</div><div class="lbl">Total</div></div>
+    <div class="stat s-match"><div class="big" id="st-match">0</div><div class="lbl">Fully Matched</div></div>
+    <div class="stat s-aas">  <div class="big" id="st-aas">0</div>   <div class="lbl">AAS Only</div></div>
+    <div class="stat s-fab">  <div class="big" id="st-fab">0</div>   <div class="lbl">Fabric Only</div></div>
+    <div class="stat s-miss"> <div class="big" id="st-miss">0</div>  <div class="lbl">Missing Both</div></div>
+  </div>
+
+  <!-- Download -->
+  <div class="dl-card">
+    <div>
+      <h3>📄 <span id="dl-name">comparison_results.csv</span></h3>
+      <p>Full comparison with DAX formulas, data types, and status — download for your records or share with your team</p>
+    </div>
+    <button class="btn btn-green" onclick="downloadResults()">⬇ Download CSV</button>
+  </div>
+
+  <!-- Category pills -->
+  <div class="section-title">Filter by Category</div>
+  <div class="cat-pills" id="cat-pills"></div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar">
+    <button class="fbtn active" onclick="applyStatusFilter('all',this)"><span class="dot" style="background:var(--accent)"></span>All</button>
+    <button class="fbtn" onclick="applyStatusFilter('MATCHED',this)"><span class="dot" style="background:var(--green)"></span>Fully Matched</button>
+    <button class="fbtn" onclick="applyStatusFilter('DEF_DIFFERS',this)"><span class="dot" style="background:var(--yellow)"></span>Definition Differs</button>
+    <button class="fbtn" onclick="applyStatusFilter('AAS_ONLY',this)"><span class="dot" style="background:var(--orange)"></span>AAS Only</button>
+    <button class="fbtn" onclick="applyStatusFilter('FABRIC_ONLY',this)"><span class="dot" style="background:var(--purple)"></span>Fabric Only</button>
+    <input type="text" class="search-box" placeholder="Search object name…" oninput="applySearch(this.value)"/>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Type</th>
+          <th>Name</th>
+          <th>Parent Table</th>
+          <th>AAS DAX Formula</th>
+          <th>Fabric DAX Formula</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="results-tbody"></tbody>
+    </table>
+    <div id="empty-state" class="empty" style="display:none;">
+      <div style="font-size:32px;margin-bottom:8px;">🔍</div>
+      <p>No results match this filter</p>
+    </div>
+  </div>
+  <div style="margin-top:8px;font-size:11px;color:var(--text3);" id="showing-label"></div>
+</div>
+
+</div>
+<script>
+// ── State ─────────────────────────────────────────────────────────
+const appData = { aas:null, fab:null, results:[] };
+let statusFilter = 'all';
+let typeFilter   = 'all';
+let searchTerm   = '';
+
+// ── File handling ──────────────────────────────────────────────────
+function handleFile(event, side){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const rows = parseCSV(e.target.result);
+      if(rows.length === 0){
+        alert(`No valid rows found in ${file.name}.\n\nMake sure the file has columns: object_type, name, source\nAnd was generated by extract_aas.py or extract_fabric.py`);
+        return;
+      }
+      appData[side] = rows;
+      const el = document.getElementById(`${side}-file-name`);
+      // Show breakdown by object_type
+      const counts = {};
+      rows.forEach(r=>{ counts[r.object_type]=(counts[r.object_type]||0)+1; });
+      const breakdown = Object.entries(counts).map(([k,v])=>`${k}:${v}`).join(' | ');
+      el.textContent = `✓ ${file.name} — ${rows.length} objects (${breakdown})`;
+      el.style.display = 'inline-block';
+      document.getElementById(`${side}-box`).style.borderColor = 'var(--green)';
+      checkReady();
+    } catch(err) {
+      alert(`Error reading ${file.name}: ${err.message}`);
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function parseCSV(text){
+  // Normalise line endings — handle Windows \r\n and Mac \r
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  const lines = text.trim().split('\n').filter(l => l.trim() !== '');
+  if(lines.length < 2) return [];
+
+  // Parse header — lowercase, strip BOM and quotes
+  const headers = lines[0]
+    .replace(/^\uFEFF/, '')          // strip UTF-8 BOM if present
+    .split(',')
+    .map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+
+  // Check required columns exist
+  if(!headers.includes('name')){
+    throw new Error(`CSV must have a 'name' column. Found: ${headers.join(', ')}`);
+  }
+
+  return lines.slice(1).map(line => {
+    // Parse fields — handle commas inside quoted fields
+    const parts = [];
+    let cur = '', inQ = false;
+    for(let i = 0; i < line.length; i++){
+      const c = line[i];
+      if(c === '"'){
+        inQ = !inQ;
+      } else if(c === ',' && !inQ){
+        parts.push(cur); cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    parts.push(cur);
+
+    const obj = {};
+    headers.forEach((h, i) => {
+      obj[h] = (parts[i] || '').trim().replace(/^"|"$/g, '');
+    });
+    return obj;
+  }).filter(r => r.name && r.name.trim() !== '');
+}
+
+function checkReady(){
+  const ready = !!(appData.aas && appData.fab &&
+                   appData.aas.length > 0 && appData.fab.length > 0);
+  document.getElementById('compare-btn').disabled = !ready;
+  if(ready){
+    document.getElementById('compare-btn').textContent =
+      `▶ Compare Now  (${appData.aas.length} AAS  vs  ${appData.fab.length} Fabric objects)`;
+    document.getElementById('step3').className='step done';
+    document.getElementById('step4').className='step active';
+  }
+}
+
+// ── Comparison ────────────────────────────────────────────────────
+function normalise(s){
+  // Normalise DAX for comparison — remove extra whitespace, lowercase
+  return (s||'').replace(/\s+/g,' ').trim().toLowerCase();
+}
+
+function runComparison(){
+  if(!appData.aas || !appData.fab){
+    alert('Please upload both CSV files first.');
+    return;
+  }
+  if(appData.aas.length === 0 || appData.fab.length === 0){
+    alert('One or both CSV files have no valid rows. Check the files were generated by extract_aas.py / extract_fabric.py.');
+    return;
+  }
+
+  // Key = object_type + '::' + name + '::' + parent_table
+  const aasMap = new Map();
+  const fabMap = new Map();
+
+  appData.aas.forEach(r=>{
+    const key = `${r.object_type}::${r.name}::${r.parent_table||''}`;
+    aasMap.set(key, r);
+  });
+  appData.fab.forEach(r=>{
+    const key = `${r.object_type}::${r.name}::${r.parent_table||''}`;
+    fabMap.set(key, r);
+  });
+
+  const allKeys = new Set([...aasMap.keys(), ...fabMap.keys()]);
+  const results = [];
+
+  allKeys.forEach(key=>{
+    const inAAS = aasMap.has(key);
+    const inFab = fabMap.has(key);
+    const aObj  = aasMap.get(key) || {};
+    const fObj  = fabMap.get(key) || {};
+    const ref   = inAAS ? aObj : fObj;
+
+    let status = 'MATCHED';
+    if(!inAAS)      status = 'FABRIC_ONLY';
+    else if(!inFab) status = 'AAS_ONLY';
+    else {
+      const daxMatch  = normalise(aObj.dax_formula) === normalise(fObj.dax_formula);
+      if(!daxMatch && (aObj.dax_formula || fObj.dax_formula))
+        status = 'DEF_DIFFERS';
+    }
+
+    results.push({
+      object_type:   ref.object_type   || '',
+      category:      ref.category      || '',
+      name:          ref.name          || '',
+      parent_table:  ref.parent_table  || '',
+      aas_dax:       aObj.dax_formula  || '',
+      fab_dax:       fObj.dax_formula  || '',
+      in_aas:        inAAS,
+      in_fab:        inFab,
+      status:        status,
+    });
+  });
+
+  // Sort: issues first
+  const order = {AAS_ONLY:0, FABRIC_ONLY:1, DEF_DIFFERS:2, MATCHED:3};
+  results.sort((a,b)=>
+    (order[a.status]||0)-(order[b.status]||0)||
+    a.object_type.localeCompare(b.object_type)||
+    a.name.localeCompare(b.name));
+
+  appData.results = results;
+
+  renderStats(results);
+  renderCatPills(results);
+  renderTable();
+
+  document.getElementById('results-section').style.display='block';
+  document.getElementById('results-section').scrollIntoView({behavior:'smooth'});
+  setDownloadName();
+}
+
+function renderStats(results){
+  const cnt = s => results.filter(r=>r.status===s).length;
+  document.getElementById('st-total').textContent = results.length;
+  document.getElementById('st-match').textContent = cnt('MATCHED');
+  document.getElementById('st-aas').textContent   = cnt('AAS_ONLY');
+  document.getElementById('st-fab').textContent   = cnt('FABRIC_ONLY');
+  document.getElementById('st-miss').textContent  = 0;
+}
+
+function renderCatPills(results){
+  const types = [...new Set(results.map(r=>r.object_type))].sort();
+  const colors = {fact:'var(--accent)',dim:'var(--purple)',measure:'var(--green)',
+                  calc_table:'var(--orange)',calc_column:'var(--yellow)',column:'var(--text2)'};
+  const el = document.getElementById('cat-pills');
+  el.innerHTML = `
+    <div class="cat-pill active" onclick="applyCatFilter('all',this)">
+      <span class="dot" style="background:var(--accent)"></span>
+      All <span style="font-family:var(--font-mono);font-size:11px">${results.length}</span>
+    </div>` +
+    types.map(t=>{
+      const cnt   = results.filter(r=>r.object_type===t).length;
+      const color = colors[t]||'var(--text2)';
+      return `<div class="cat-pill" onclick="applyCatFilter('${t}',this)">
+        <span class="dot" style="background:${color}"></span>
+        ${t} <span style="font-family:var(--font-mono);font-size:11px">${cnt}</span>
+      </div>`;
+    }).join('');
+}
+
+function renderTable(){
+  let filtered = appData.results;
+  if(statusFilter !== 'all') filtered = filtered.filter(r=>r.status===statusFilter);
+  if(typeFilter   !== 'all') filtered = filtered.filter(r=>r.object_type===typeFilter);
+  if(searchTerm)             filtered = filtered.filter(r=>
+    r.name.toLowerCase().includes(searchTerm) ||
+    (r.parent_table||'').toLowerCase().includes(searchTerm));
+
+  const tbody = document.getElementById('results-tbody');
+  const empty = document.getElementById('empty-state');
+
+  if(!filtered.length){
+    tbody.innerHTML=''; empty.style.display='block';
+    document.getElementById('showing-label').textContent='';
+    return;
+  }
+  empty.style.display='none';
+
+  const statusBadge = {
+    MATCHED:      '<span class="badge b-match">✅ Matched</span>',
+    DEF_DIFFERS:  '<span class="badge b-diff">⚠ Formula Differs</span>',
+    AAS_ONLY:     '<span class="badge b-aas">⚠ AAS Only</span>',
+    FABRIC_ONLY:  '<span class="badge b-fab">⚠ Fabric Only</span>',
+  };
+
+  tbody.innerHTML = filtered.map((r,i)=>{
+    const aasDax = r.aas_dax || (r.in_aas ? '' : '—');
+    const fabDax = r.fab_dax || (r.in_fab ? '' : '—');
+    const daxCls = !r.aas_dax && !r.fab_dax ? '' :
+                   normalise(r.aas_dax)===normalise(r.fab_dax) ? 'match' : 'diff';
+
+    return `<tr>
+      <td style="color:var(--text3)">${i+1}</td>
+      <td><span class="badge b-type">${r.object_type}</span></td>
+      <td style="color:var(--text);font-weight:500;max-width:200px;word-break:break-word">${r.name}</td>
+      <td style="color:var(--text2)">${r.parent_table||'—'}</td>
+      <td><div class="dax-cell ${daxCls}" title="Click to expand">${escHtml(aasDax)||'—'}</div></td>
+      <td><div class="dax-cell ${daxCls}" title="Click to expand">${escHtml(fabDax)||'—'}</div></td>
+      <td>${statusBadge[r.status]||r.status}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('showing-label').textContent =
+    `Showing ${filtered.length} of ${appData.results.length} objects`;
+}
+
+function escHtml(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function applyStatusFilter(f, btn){
+  statusFilter = f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+function applyCatFilter(t, pill){
+  typeFilter = t;
+  document.querySelectorAll('.cat-pill').forEach(p=>p.classList.remove('active'));
+  pill.classList.add('active');
+  renderTable();
+}
+
+function applySearch(val){
+  searchTerm = val.toLowerCase();
+  renderTable();
+}
+
+// ── Download ──────────────────────────────────────────────────────
+function setDownloadName(){
+  document.getElementById('dl-name').textContent =
+    `comparison_results_${new Date().toISOString().slice(0,10)}.csv`;
+}
+
+function downloadResults(){
+  const headers = [
+    'object_type','name','parent_table',
+    'aas_dax','fab_dax',
+    'in_aas','in_fab','status'
+  ];
+  const csv = [
+    headers.join(','),
+    ...appData.results.map(r=>
+      headers.map(h=>`"${String(r[h]||'').replace(/"/g,'""')}"`).join(','))
+  ].join('\n');
+  const name = `comparison_results_${new Date().toISOString().slice(0,10)}.csv`;
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ── Credential & Script Generation ───────────────────────────────
+
+function switchTab(id, btn){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function togglePw(id, btn){
+  const el = document.getElementById(id);
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁';
+}
+
+function sanitiseRegion(val){
+  // Strip any full URL the user may have pasted, leaving just the slug
+  // e.g. "asazure://eastus.asazure.windows.net/server" → "eastus"
+  //      "eastus.asazure.windows.net" → "eastus"
+  //      "eastus" → "eastus"
+  val = val.trim()
+    .replace(/^asazure:\/\//i, '')   // strip protocol
+    .replace(/^https?:\/\//i, '');
+  // If it looks like "eastus.asazure.windows.net/..." take only the first segment
+  const m = val.match(/^([^./]+)/);
+  return m ? m[1] : val;
+}
+
+function sanitiseServerName(val){
+  // Strip any full URL, leaving just the server name at the end
+  // e.g. "asazure://eastus.asazure.windows.net/myserver" → "myserver"
+  //      "eastus.asazure.windows.net/myserver" → "myserver"
+  //      "myserver" → "myserver"
+  val = val.trim()
+    .replace(/^asazure:\/\//i, '')
+    .replace(/^https?:\/\//i, '');
+  // Take the last non-empty path segment
+  const parts = val.split('/').map(s=>s.trim()).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : val;
+}
+
+function getCredentials(){
+  const rawRegion = document.getElementById('aas-region').value;
+  const rawServer = document.getElementById('aas-server').value;
+  const region = sanitiseRegion(rawRegion);
+  const server = sanitiseServerName(rawServer);
+  return {
+    user:      document.getElementById('cred-user').value.trim(),
+    password:  document.getElementById('cred-password').value,
+    aasRegion: region,
+    aasServer: server,
+    aasDb:     document.getElementById('aas-database').value.trim(),
+    fabWs:     document.getElementById('fab-workspace').value.trim(),
+    fabDs:     document.getElementById('fab-dataset').value.trim(),
+  };
+}
+
+function isAasFilled(c){ return !!(c.user && c.password && c.aasRegion && c.aasServer && c.aasDb); }
+function isFabFilled(c){ return !!(c.user && c.password && c.fabWs && c.fabDs); }
+function isBothFilled(c){ return isAasFilled(c) && isFabFilled(c); }
+
+function onCredChange(){
+  const c = getCredentials();
+  const aasFilled = isAasFilled(c);
+  const fabFilled = isFabFilled(c);
+  const bothFilled = aasFilled && fabFilled;
+
+  // Live AAS server URL preview
+  const previewWrap = document.getElementById('aas-server-preview-wrap');
+  if(c.aasRegion && c.aasServer){
+    const assembled = `asazure://${c.aasRegion}.asazure.windows.net/${c.aasServer}`;
+    document.getElementById('aas-server-preview').textContent = assembled;
+    previewWrap.style.display = 'block';
+  } else {
+    previewWrap.style.display = 'none';
+  }
+
+  // AAS status
+  const aasStatus = document.getElementById('aas-cred-status');
+  if(aasFilled){
+    aasStatus.className='cred-status cred-ok';
+    aasStatus.innerHTML='✅ &nbsp;AAS credentials complete';
+    aasStatus.style.display='flex';
+  } else if(c.user || c.aasRegion || c.aasServer || c.aasDb){
+    aasStatus.className='cred-status cred-warn';
+    const missing=[];
+    if(!c.user) missing.push('User');
+    if(!c.password) missing.push('Password');
+    if(!c.aasRegion) missing.push('Region');
+    if(!c.aasServer) missing.push('Server Name');
+    if(!c.aasDb) missing.push('Database');
+    aasStatus.innerHTML='⚠ &nbsp;Missing: '+missing.join(', ');
+    aasStatus.style.display='flex';
+  } else { aasStatus.style.display='none'; }
+
+  // Fabric status
+  const fabStatus = document.getElementById('fab-cred-status');
+  if(fabFilled){
+    fabStatus.className='cred-status cred-ok';
+    fabStatus.innerHTML='✅ &nbsp;Fabric credentials complete';
+    fabStatus.style.display='flex';
+  } else if(c.user || c.fabWs || c.fabDs){
+    fabStatus.className='cred-status cred-warn';
+    const missing=[];
+    if(!c.user) missing.push('User');
+    if(!c.password) missing.push('Password');
+    if(!c.fabWs) missing.push('Workspace');
+    if(!c.fabDs) missing.push('Dataset');
+    fabStatus.innerHTML='⚠ &nbsp;Missing: '+missing.join(', ');
+    fabStatus.style.display='flex';
+  } else { fabStatus.style.display='none'; }
+
+  // Overall banner
+  const okBanner = document.getElementById('cred-ok-banner');
+  okBanner.style.display = bothFilled ? 'flex' : 'none';
+
+  // Enable/disable buttons
+  document.getElementById('dl-aas-btn').disabled = !aasFilled;
+  document.getElementById('preview-aas-btn').disabled = !aasFilled;
+  document.getElementById('dl-fab-btn').disabled = !fabFilled;
+  document.getElementById('preview-fab-btn').disabled = !fabFilled;
+
+  // Style gen cards
+  document.getElementById('gen-aas-card').className = 'gen-card' + (aasFilled?' ready':'');
+  document.getElementById('gen-fab-card').className = 'gen-card' + (fabFilled?' ready':'');
+
+  // Show run instructions once at least one is ready
+  document.getElementById('run-instructions').style.display = (aasFilled||fabFilled)?'block':'none';
+
+  // Update steps
+  updateSteps(aasFilled, fabFilled);
+}
+
+function updateSteps(aasFilled, fabFilled){
+  const s1 = document.getElementById('step1');
+  const s2 = document.getElementById('step2');
+  if(aasFilled && fabFilled){
+    s1.className='step done'; s2.className='step active';
+  } else if(aasFilled || fabFilled){
+    s1.className='step active'; s2.className='step';
+  } else {
+    s1.className='step active'; s2.className='step';
+  }
+}
+
+function buildAasScript(){
+  const c = getCredentials();
+  return `"""
+extract_aas.py  v3.0
+──────────────────────────────────────────────────────────────────
+Extracts full metadata from Azure Analysis Services using only
+DMVs confirmed to work on older AAS compatibility levels:
+  - TMSCHEMA_TABLES       → fact/dim/calc tables
+  - TMSCHEMA_MEASURES     → measures + DAX expressions
+  - DBSCHEMA_COLUMNS      → table columns + data types
+  - DBSCHEMA_TABLES       → table type filtering
+
+Output: <DATABASE>_aas_objects_<date>.csv
+
+Usage:
+    pip install pywin32 pandas
+    python extract_aas.py
+"""
+
+import win32com.client
+import pythoncom
+import pandas as pd
+from datetime import datetime
+
+# ── Connection Settings ───────────────────────────────────
+SERVER   = "asazure://${c.aasRegion}.asazure.windows.net/${c.aasServer}"
+DATABASE = "${c.aasDb}"
+USER     = "${c.user}"
+PASSWORD = "${c.password}"
+# ─────────────────────────────────────────────────────────
+
+CONN_STR = (
+    f"Provider=MSOLAP;"
+    f"Data Source={SERVER};"
+    f"Initial Catalog={DATABASE};"
+    f"Persist Security Info=True;"
+    f"User ID={USER};"
+    f"Password={PASSWORD};"
+)
+
+
+def run(conn, sql):
+    rs = win32com.client.Dispatch("ADODB.Recordset")
+    rs.Open(sql, conn)
+    rows = []
+    while not rs.EOF:
+        row = {}
+        for i in range(rs.Fields.Count):
+            row[rs.Fields.Item(i).Name] = rs.Fields.Item(i).Value
+        rows.append(row)
+        rs.MoveNext()
+    rs.Close()
+    return rows
+
+
+def safe(val):
+    return str(val).strip() if val is not None else ""
+
+
+def main():
+    pythoncom.CoInitialize()
+
+    print(f"\\nConnecting to AAS: {SERVER}")
+    print(f"Database        : {DATABASE}\\n")
+
+    try:
+        conn = win32com.client.Dispatch("ADODB.Connection")
+        conn.ConnectionTimeout = 60
+        conn.Open(CONN_STR)
+        print("Connected OK\\n")
+    except Exception as e:
+        print(f"Connection failed: {e}")
+        input("Press Enter to close")
+        return
+
+    results = []
+
+    # ── 1. Tables (fact + dim + calc) ────────────────────────────
+    print("Fetching tables...")
+    table_rows = run(conn,
+        "SELECT [Name], [SystemFlags] "
+        "FROM $SYSTEM.TMSCHEMA_TABLES")
+
+    db_tables = run(conn,
+        "SELECT [TABLE_NAME], [TABLE_TYPE] "
+        "FROM $SYSTEM.DBSCHEMA_TABLES")
+    db_table_types = {r["TABLE_NAME"]: safe(r["TABLE_TYPE"])
+                      for r in db_tables}
+
+    reg_tables  = [r for r in table_rows if r["SystemFlags"] == 0]
+    calc_tables = [r for r in table_rows if r["SystemFlags"] == 2]
+
+    for r in reg_tables:
+        ttype = "fact" if r["Name"].lower().startswith("fact") else "dim"
+        results.append({"object_type": ttype, "category": "table", "name": r["Name"],
+                         "parent_table": "", "data_type": "", "dax_formula": "", "source": "AAS"})
+
+    for r in calc_tables:
+        results.append({"object_type": "calc_table", "category": "calculated table",
+                         "name": r["Name"], "parent_table": "", "data_type": "", "dax_formula": "", "source": "AAS"})
+
+    print(f"  {len(reg_tables)} fact/dim tables")
+    print(f"  {len(calc_tables)} calculated tables")
+
+    # ── 2. Columns ───────────────────────────────────────────────
+    print("Fetching columns...")
+    all_cols = run(conn,
+        "SELECT [TABLE_NAME], [COLUMN_NAME], [DATA_TYPE] "
+        "FROM $SYSTEM.DBSCHEMA_COLUMNS")
+
+    known_tables = {r["Name"] for r in table_rows}
+    col_count = 0
+    for r in all_cols:
+        tname = safe(r["TABLE_NAME"]); colname = safe(r["COLUMN_NAME"]); dtype = safe(r["DATA_TYPE"])
+        if colname.startswith("$") or colname.startswith("["):
+            continue
+        if tname not in known_tables:
+            continue
+        results.append({"object_type": "column", "category": "column", "name": colname,
+                         "parent_table": tname, "data_type": dtype, "dax_formula": "", "source": "AAS"})
+        col_count += 1
+    print(f"  {col_count} columns")
+
+    # ── 3. Measures ──────────────────────────────────────────────
+    print("Fetching measures...")
+    meas_rows = run(conn,
+        "SELECT [Name], [Expression] FROM $SYSTEM.TMSCHEMA_MEASURES ORDER BY [Name]")
+    for r in meas_rows:
+        results.append({"object_type": "measure", "category": "measure",
+                         "name": f"[{r['Name']}]", "parent_table": "", "data_type": "",
+                         "dax_formula": safe(r["Expression"]), "source": "AAS"})
+    print(f"  {len(meas_rows)} measures")
+
+    conn.Close()
+
+    df = pd.DataFrame(results, columns=[
+        "object_type", "category", "name", "parent_table", "data_type", "dax_formula", "source"])
+    outfile = f"{DATABASE}_aas_objects_{datetime.now().strftime('%Y%m%d')}.csv"
+    df.to_csv(outfile, index=False)
+
+    print(f"\\nDone! {len(results)} objects saved → {outfile}")
+    print("\\nBreakdown:")
+    print(df["object_type"].value_counts().to_string())
+    input("\\nPress Enter to close")
+
+
+if __name__ == "__main__":
+    main()
+`;
+}
+
+function buildFabricScript(){
+  const c = getCredentials();
+  return `"""
+extract_fabric.py  v3.0
+──────────────────────────────────────────────────────────────────
+Extracts full metadata from Microsoft Fabric Semantic Model using
+the same DMV strategy as extract_aas.py v3.0:
+  - TMSCHEMA_TABLES       → fact/dim/calc tables
+  - TMSCHEMA_MEASURES     → measures + DAX expressions
+  - DBSCHEMA_COLUMNS      → table columns + data types
+
+Output: <DATASET>_fabric_objects_<date>.csv
+
+Usage:
+    pip install pywin32 pandas
+    python extract_fabric.py
+"""
+
+import win32com.client
+import pythoncom
+import pandas as pd
+from datetime import datetime
+
+# ── Connection Settings ───────────────────────────────────
+WORKSPACE = "${c.fabWs}"
+DATASET   = "${c.fabDs}"
+USER      = "${c.user}"
+PASSWORD  = "${c.password}"
+# ─────────────────────────────────────────────────────────
+
+SERVER = f"powerbi://api.powerbi.com/v1.0/myorg/{WORKSPACE}"
+
+CONN_STR = (
+    f"Provider=MSOLAP;"
+    f"Data Source={SERVER};"
+    f"Initial Catalog={DATASET};"
+    f"Persist Security Info=True;"
+    f"User ID={USER};"
+    f"Password={PASSWORD};"
+)
+
+
+def run(conn, sql):
+    rs = win32com.client.Dispatch("ADODB.Recordset")
+    rs.Open(sql, conn)
+    rows = []
+    while not rs.EOF:
+        row = {}
+        for i in range(rs.Fields.Count):
+            row[rs.Fields.Item(i).Name] = rs.Fields.Item(i).Value
+        rows.append(row)
+        rs.MoveNext()
+    rs.Close()
+    return rows
+
+
+def safe(val):
+    return str(val).strip() if val is not None else ""
+
+
+def main():
+    pythoncom.CoInitialize()
+
+    print(f"\\nConnecting to Fabric: {SERVER}")
+    print(f"Dataset           : {DATASET}\\n")
+
+    try:
+        conn = win32com.client.Dispatch("ADODB.Connection")
+        conn.ConnectionTimeout = 60
+        conn.Open(CONN_STR)
+        print("Connected OK\\n")
+    except Exception as e:
+        print(f"Connection failed: {e}")
+        input("Press Enter to close")
+        return
+
+    results = []
+
+    # ── 1. Tables ────────────────────────────────────────────────
+    print("Fetching tables...")
+    table_rows = run(conn,
+        "SELECT [Name], [SystemFlags] FROM $SYSTEM.TMSCHEMA_TABLES")
+
+    reg_tables  = [r for r in table_rows if r["SystemFlags"] == 0]
+    calc_tables = [r for r in table_rows if r["SystemFlags"] == 2]
+    known_tables = {r["Name"] for r in table_rows}
+
+    for r in reg_tables:
+        ttype = "fact" if r["Name"].lower().startswith("fact") else "dim"
+        results.append({"object_type": ttype, "category": "table", "name": r["Name"],
+                         "parent_table": "", "data_type": "", "dax_formula": "", "source": "Fabric"})
+
+    for r in calc_tables:
+        results.append({"object_type": "calc_table", "category": "calculated table",
+                         "name": r["Name"], "parent_table": "", "data_type": "", "dax_formula": "", "source": "Fabric"})
+
+    print(f"  {len(reg_tables)} fact/dim tables")
+    print(f"  {len(calc_tables)} calculated tables")
+
+    # ── 2. Columns ───────────────────────────────────────────────
+    print("Fetching columns...")
+    try:
+        all_cols = run(conn,
+            "SELECT [TABLE_NAME], [COLUMN_NAME], [DATA_TYPE] FROM $SYSTEM.DBSCHEMA_COLUMNS")
+        col_count = 0
+        for r in all_cols:
+            tname = safe(r["TABLE_NAME"]); colname = safe(r["COLUMN_NAME"]); dtype = safe(r["DATA_TYPE"])
+            if colname.startswith("$") or colname.startswith("["):
+                continue
+            if tname not in known_tables:
+                continue
+            results.append({"object_type": "column", "category": "column", "name": colname,
+                             "parent_table": tname, "data_type": dtype, "dax_formula": "", "source": "Fabric"})
+            col_count += 1
+        print(f"  {col_count} columns")
+    except Exception as e:
+        print(f"  Could not fetch columns: {e}")
+
+    # ── 3. Measures ──────────────────────────────────────────────
+    print("Fetching measures...")
+    try:
+        meas_rows = run(conn,
+            "SELECT [Name], [Expression] FROM $SYSTEM.TMSCHEMA_MEASURES ORDER BY [Name]")
+        for r in meas_rows:
+            results.append({"object_type": "measure", "category": "measure",
+                             "name": f"[{r['Name']}]", "parent_table": "", "data_type": "",
+                             "dax_formula": safe(r["Expression"]), "source": "Fabric"})
+        print(f"  {len(meas_rows)} measures")
+    except Exception as e:
+        print(f"  Could not fetch measures: {e}")
+
+    conn.Close()
+
+    df = pd.DataFrame(results, columns=[
+        "object_type", "category", "name", "parent_table", "data_type", "dax_formula", "source"])
+    outfile = f"{DATASET}_fabric_objects_{datetime.now().strftime('%Y%m%d')}.csv"
+    df.to_csv(outfile, index=False)
+
+    print(f"\\nDone! {len(results)} objects saved → {outfile}")
+    print("\\nBreakdown:")
+    print(df["object_type"].value_counts().to_string())
+    input("\\nPress Enter to close")
+
+
+if __name__ == "__main__":
+    main()
+`;
+}
+
+function downloadScript(type){
+  const content = type === 'aas' ? buildAasScript() : buildFabricScript();
+  const filename = type === 'aas' ? 'extract_aas.py' : 'extract_fabric.py';
+  const blob = new Blob([content], {type:'text/x-python'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  // advance step
+  document.getElementById('step2').className='step done';
+  document.getElementById('step3').className='step active';
+}
+
+function previewScript(type){
+  const content = type === 'aas' ? buildAasScript() : buildFabricScript();
+  const filename = type === 'aas' ? 'extract_aas.py' : 'extract_fabric.py';
+  document.getElementById('preview-title').textContent = '📄 ' + filename;
+  document.getElementById('script-preview-content').textContent = content;
+  document.getElementById('script-preview-wrap').style.display='block';
+  document.getElementById('script-preview-wrap').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function closePreview(){
+  document.getElementById('script-preview-wrap').style.display='none';
+}
+
+
+document.querySelectorAll('.upload-box').forEach(z=>{
+  z.addEventListener('dragover', e=>{e.preventDefault();z.classList.add('drag');});
+  z.addEventListener('dragleave',()=>z.classList.remove('drag'));
+  z.addEventListener('drop',     ()=>z.classList.remove('drag'));
+});
+</script>
+</body>
+</html>
