@@ -276,6 +276,25 @@ tr:last-child td{border-bottom:none;}
     <pre id="script-preview-content" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:16px;font-family:var(--font-mono);font-size:10px;line-height:1.7;color:var(--text2);overflow-x:auto;max-height:360px;overflow-y:auto;white-space:pre;"></pre>
   </div>
 
+  <!-- Copy-to-clipboard fallback modal -->
+  <div id="copy-modal" style="display:none;margin-top:14px;border:1px solid var(--accent);border-radius:var(--radius-lg);padding:18px;background:rgba(0,212,255,.04);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--accent);" id="copy-modal-title"></div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px;">Download was blocked by your browser. Select all → copy → paste into a new <code style="color:var(--accent);">.py</code> file.</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" style="padding:6px 14px;font-size:11px;" onclick="copyScriptToClipboard()">📋 Copy All to Clipboard</button>
+        <button class="btn btn-outline" style="padding:6px 10px;font-size:11px;" onclick="closeCopyModal()">✕</button>
+      </div>
+    </div>
+    <textarea id="copy-modal-content" readonly
+      style="width:100%;height:320px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);
+             padding:14px;font-family:var(--font-mono);font-size:10px;line-height:1.7;color:var(--text2);resize:vertical;outline:none;"
+      onclick="this.select()"></textarea>
+    <div id="copy-confirm" style="display:none;margin-top:8px;font-size:11px;color:var(--green);">✅ Copied to clipboard! Paste into a new file named <span id="copy-confirm-filename" style="font-family:var(--font-mono);"></span></div>
+  </div>
+
   <!-- Run instructions -->
   <div class="run-instructions" id="run-instructions">
     <div style="color:var(--accent);font-weight:500;margin-bottom:8px;">▶ How to run the scripts on your machine:</div>
@@ -1114,16 +1133,86 @@ if __name__ == "__main__":
 }
 
 function downloadScript(type){
-  const content = type === 'aas' ? buildAasScript() : buildFabricScript();
+  const content  = type === 'aas' ? buildAasScript() : buildFabricScript();
   const filename = type === 'aas' ? 'extract_aas.py' : 'extract_fabric.py';
-  const blob = new Blob([content], {type:'text/x-python'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  // advance step
+
+  // Attempt 1: Blob URL (standard, blocked by some browsers on hosted pages)
+  try {
+    const blob = new Blob([content], {type:'text/x-python'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); document.body.removeChild(a); }, 300);
+
+    // Check if it actually worked by listening for a short delay with no error
+    setTimeout(()=>{
+      // Advance step regardless — if we got here without throwing, it likely worked
+      document.getElementById('step2').className='step done';
+      document.getElementById('step3').className='step active';
+    }, 500);
+    return;
+  } catch(e1) {
+    // fall through to attempt 2
+  }
+
+  // Attempt 2: data: URI (works in more contexts)
+  try {
+    const encoded = 'data:text/x-python;charset=utf-8,' + encodeURIComponent(content);
+    const a = document.createElement('a');
+    a.href = encoded;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    document.getElementById('step2').className='step done';
+    document.getElementById('step3').className='step active';
+    return;
+  } catch(e2) {
+    // fall through to copy fallback
+  }
+
+  // Fallback: show copy-to-clipboard modal
+  showCopyModal(content, filename);
+}
+
+function showCopyModal(content, filename){
+  closeCopyModal._content  = content;
+  closeCopyModal._filename = filename;
+  document.getElementById('copy-modal-title').textContent = '📄 ' + filename;
+  document.getElementById('copy-modal-content').value = content;
+  document.getElementById('copy-modal').style.display = 'block';
+  document.getElementById('copy-confirm').style.display = 'none';
+  document.getElementById('copy-confirm-filename').textContent = filename;
+  document.getElementById('copy-modal').scrollIntoView({behavior:'smooth', block:'nearest'});
   document.getElementById('step2').className='step done';
   document.getElementById('step3').className='step active';
+}
+
+function copyScriptToClipboard(){
+  const ta = document.getElementById('copy-modal-content');
+  ta.select();
+  try {
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ta.value).then(()=>{
+        document.getElementById('copy-confirm').style.display='block';
+      });
+    } else {
+      document.execCommand('copy');
+      document.getElementById('copy-confirm').style.display='block';
+    }
+  } catch(e) {
+    // last resort — just select all so user can Ctrl+C manually
+    ta.select();
+  }
+}
+
+function closeCopyModal(){
+  document.getElementById('copy-modal').style.display='none';
 }
 
 function previewScript(type){
